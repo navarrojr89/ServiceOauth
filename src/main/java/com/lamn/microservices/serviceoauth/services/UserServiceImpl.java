@@ -50,4 +50,9 @@ public class UserServiceImpl implements UserDetailsService, UserService {
     public User findByUsername(String username) {
         return userRestClient.findByUsername(username);
     }
+
+    @Override
+    public User update(User user, Long id) {
+        return userRestClient.update(user, id);
+    }
 }

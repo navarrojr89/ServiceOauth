@@ -15,4 +15,13 @@ public interface UserService {
      */
     User findByUsername(String username);
 
+    /**
+     * Update user.
+     *
+     * @param user the user
+     * @param id   the id
+     * @return the user
+     */
+    User update(User user, Long id);
+
 }
