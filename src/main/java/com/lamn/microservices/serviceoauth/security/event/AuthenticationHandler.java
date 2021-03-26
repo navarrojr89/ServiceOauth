@@ -1,5 +1,6 @@
 package com.lamn.microservices.serviceoauth.security.event;
 
+import brave.Tracer;
 import com.lamn.microservices.serviceoauth.services.UserService;
 import com.lamn.microservices.userscommons.models.entity.User;
 import feign.FeignException;
@@ -20,6 +21,8 @@ public class AuthenticationHandler implements AuthenticationEventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(AuthenticationHandler.class);
 
+    @Autowired
+    private Tracer tracer;
     @Autowired
     private UserService userService;
 
@@ -58,6 +61,7 @@ public class AuthenticationHandler implements AuthenticationEventPublisher {
                 user.setEnabled(false);
             }
 
+            tracer.currentSpan().tag("error.attempts", "The user has " + user.getAttempts() + " failure attempts");
             userService.update(user, user.getId());
 
         } catch (FeignException e) {

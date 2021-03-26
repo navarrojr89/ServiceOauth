@@ -1,7 +1,9 @@
 package com.lamn.microservices.serviceoauth.services;
 
+import brave.Tracer;
 import com.lamn.microservices.serviceoauth.clients.UserRestClient;
 import com.lamn.microservices.userscommons.models.entity.User;
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,25 +27,28 @@ public class UserServiceImpl implements UserDetailsService, UserService {
 
     @Autowired
     private UserRestClient userRestClient;
+    @Autowired
+    private Tracer tracer;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRestClient.findByUsername(username);
+        try {
+            User user = userRestClient.findByUsername(username);
 
-        if (user == null) {
+            List<GrantedAuthority> authorities = user.getRoles().stream()
+                    .map(role -> new SimpleGrantedAuthority(role.getName()))
+                    .peek(simpleGrantedAuthority -> LOG.info("The user [{}] has the role [{}] during the login process", username, simpleGrantedAuthority.getAuthority()))
+                    .collect(Collectors.toList());
+
+            LOG.info("The user [{}] has been authenticated", username);
+
+            return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(),
+                    user.getEnabled(), true, true, true, authorities);
+        } catch (FeignException e) {
             LOG.error("The username [{}] does not exist", username);
+            tracer.currentSpan().tag("error.message", "The username " + username + " does not exist");
             throw new UsernameNotFoundException("Error authenticating the user");
         }
-
-        List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                .peek(simpleGrantedAuthority -> LOG.info("The user [{}] has the role [{}] during the login process", username, simpleGrantedAuthority.getAuthority()))
-                .collect(Collectors.toList());
-
-        LOG.info("The user [{}] has been authenticated", username);
-
-        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(),
-                user.getEnabled(), true, true, true, authorities);
     }
 
     @Override
